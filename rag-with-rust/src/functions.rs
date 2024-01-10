@@ -17,6 +17,9 @@ pub enum WebpageError {
 
 }
 
+// function to get links from a webpage 
+
+
 // function to load webpage content and associated infromation 
 pub fn get_webpage_content(url: &str) -> Result<WebpageContent, WebpageError> {
 
