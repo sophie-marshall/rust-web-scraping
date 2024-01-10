@@ -1,58 +1,64 @@
 use reqwest;
 use scraper::{Html, Selector};
+use url::Url;
+use regex::Regex;
+// use reqwest::blocking::get;
 
-// define public structures
-#[derive(Debug)]
-pub struct WebpageContent {
-    pub url: Option<String>,
-    pub title: Option<String>,
-    pub content: Option<String>,
-    pub links: Vec<String>,
-}
-
-// define error types
-#[derive(Debug)]
-pub enum WebpageError {
-    RequestError(reqwest::Error),
-
-}
 
 // function to get links from a webpage 
+pub fn get_links(url: &str, base_url: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
 
+    // get webpage content 
+    let response = reqwest::blocking::get(url)?.text()?;
+    let document = Html::parse_document(&response);
 
-// function to load webpage content and associated infromation 
-pub fn get_webpage_content(url: &str) -> Result<WebpageContent, WebpageError> {
+    // get base url 
+    let base_url = Url::parse(base_url)?;
 
-    let response = reqwest::blocking::get(url).map_err(WebpageError::RequestError)?;
-    let html_content = response.text().map_err(WebpageError::RequestError)?;
-
-    let document = Html::parse_document(&html_content);
-
-    // extract necessary data from document 
-    let url = Some(url.to_owned());
-
-    let title = document
-        .select(&Selector::parse("h1").unwrap())
-        .next()
-        .map(|h1| h1.text().collect::<String>());
-
-    let content = document
-        .select(&Selector::parse("div#main-content.wiki-content").unwrap())
-        .next()
-        .map(|element| element.text().collect::<String>());
-
+    // get links 
     let links: Vec<String> = document
-        .select(&Selector::parse("a").unwrap())
-        .filter_map(|a| a.value().attr("href").map(str::to_owned))
-        .filter(|link| link.contains("pbs"))
+        .select(&scraper::Selector::parse("a").unwrap())
+        .filter_map(|a| {
+            if let Some(href) = a.value().attr("href") {
+                if let Ok(url) = base_url.join(href) {
+                    Some(url.to_string())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
         .collect();
 
-    // create WebpageContent structure
-    Ok(WebpageContent {
-        url, 
-        title, 
-        content, 
-        links
-    })
+    // return links 
+    Ok(links)
 
+}
+
+// function to get webpage content 
+pub fn get_content(url: &str) -> Result<String, reqwest::Error> {
+
+    // get webpage content 
+    let response = reqwest::blocking::get(url)?.text()?;
+    let document = scraper::Html::parse_document(&response);
+
+    // set paragraph selector 
+    let paragraph_selector = Selector::parse("p").unwrap();
+
+    // define regex for celanup 
+    let xtra_space_regex = Regex::new(r"[ \t\n]{2,}").unwrap();
+
+    // instantiate string to hold paragraph content
+    let mut content = String::new();
+
+    for p_element in document.select(&paragraph_selector) {
+        let text = p_element.text().collect::<String>();
+        let clean_text = xtra_space_regex.replace_all(&text, " ");
+        content.push_str(&clean_text);
+        content.push_str(". "); // Add a separator between paragraphs
+    }
+
+    Ok(content)
+    
 }
