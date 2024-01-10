@@ -1,39 +1,36 @@
+mod functions;
+use functions::{get_webpage_content};
+use polars::prelude::*;
+use regex::Regex;
 
-// define webpage content data structure
-struct WebpageContent {
-    url: Option<String>,
-    title: Option<String>,
-    content: Option<String>,
-    links: Option<String>,
-}
 
 fn main() {
 
-    // retrieve html resposne, download content, and create a document
-    let response = reqwest::blocking::get("https://docs.pbs.org/display/B3");
-    let html_content = response.unwrap().text().unwrap();
-    let document = scraper::Html::parse_document(&html_content);
-    
-    // extract data from document
-    let first_page = "https://docs.pbs.org/display/B3";
-    
-    // instantiate vector to hold pages
-    let mut pages_to_scrape: Vec<String> = vec![first_page.to_owned()];
-    let mut pages_discovered: std::collections::HashSet<String> = std::collections::HashSet::new();
+    match get_webpage_content("https://docs.pbs.org/display/B3") {
 
-    let mut i = 1;
-    max_iter = 2;
+        Ok(content) => {
 
-    while !pages_to_scrape.is_empty() && i <= max_iter {
-        //get first element from pages to scrape
-        let page_to_scrape = pages_to_scrape.remove(0);
+            let space_regex = Regex::new(r"[ \t\n]{2,}").unwrap();
+            let cleaned_content = content.content.map(|s| space_regex.replace_all(&s, " ").to_string());
 
-        // get doc and parse it 
-        let response = reqwest::blocking::get(page_to_scrape);
-        let html_content = response.unwrap().text().unwrap();
-        let document = scraper::Html::parse_document(&html_content);
+            // Create a Polars DataFrame
+            let df = DataFrame::new(vec![
+                Series::new("URL", &[content.url.unwrap_or_default()]),
+                Series::new("Title", &[content.title.map(|s| s.replace(char::is_whitespace, "")).unwrap_or_default()]),
+                Series::new("Content", &[cleaned_content.unwrap_or_default()]),
+                Series::new("Links", &[content.links.join(", ")])
 
-        // apply scraping logic 
-        let html_pagination_selector = scraper::Selector::parse("div#rw_item_content")
+            ])
+
+            .expect("Failed to create DataFrame");
+
+            // Print the Polars DataFrame
+            println!("{:?}", df);
+
+        },
+        Err(err) => eprintln!("Error: {:?}", err),
     }
+
+
+
 }
