@@ -41,7 +41,7 @@ pub fn get_webpage_content(url: &str) -> Result<WebpageContent, WebpageError> {
     let links: Vec<String> = document
         .select(&Selector::parse("a").unwrap())
         .filter_map(|a| a.value().attr("href").map(str::to_owned))
-        .filter(|link| link.contains("https"))
+        .filter(|link| link.contains("pbs"))
         .collect();
 
     // create WebpageContent structure
