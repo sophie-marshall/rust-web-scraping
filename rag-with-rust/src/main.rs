@@ -23,6 +23,7 @@ fn main() {
         }
     };
 
+    
     // iterate through list 
     for link in master_links.clone() {
         match get_links(&link, homepage_url) {
@@ -39,7 +40,7 @@ fn main() {
             }
         }
     }
-
+    
     // SCRAPE LINKS 
     let mut all_content = Vec::new(); 
 
