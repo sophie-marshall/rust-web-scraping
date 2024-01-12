@@ -1,10 +1,11 @@
 // import relevant structs 
-use  spider::website::Website;
+use  spider::website::{Website, self};
 use spider::tokio; // use for asynchronous tasks 
 use scraper::Html;
 mod functions;
 use functions::{get_content};
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::time::{Instant, Duration};
 // use regex::Regex;
 // use polars::prelude::*;
@@ -17,68 +18,106 @@ use std::time::{Instant, Duration};
 async fn main() {
 
     // INSTANTIATE REQUIRED STRUCTS // 
-    let mut links_to_scrape: Vec<String> = Vec::new();
-    let mut links_visited: Vec<String> = Vec::new();
-    let mut link_content_hash: HashMap<String, String> = HashMap::new();
+    let mut queue: Vec<String> = Vec::new();
+    let mut visited: Vec<String> = Vec::new();
+    let mut content_hash: HashMap<String, String> = HashMap::new();
 
-    // SET BASE URL //
-    let start_url = "https://help.pbs.org/";
+    let root_url = "https://help.pbs.org/";
+    
+    queue.push(root_url.to_string());
+    queue.push("https://next_site.com".to_string());
+
+    // BEGIN CRAWL // 
+    let mut website = Website::new(&root_url);
+    
+    // provided a link exists in the queue crawl the site
+    while let Some(url) = queue.pop() {
+        
+        println!("CRAWLING {}", url);
+
+        let mut website = Website::new(&url);
+        
+        // let mut website = Website::new(&url);
+        website.scrape().await;
+        
+        for link in website.get_links() {
+            println!("{:?}", link.as_ref())
+        }
+        
+
+
+        // // update queue
+        // for link in webpage.get_links() {
+        //     // convert to string for logic
+        //     let str_link = link.as_ref().to_string();
+        //     // if not visited and not in queue add to queue
+        //     if !queue.contains(&str_link) && !visited.contains(&str_link) {
+        //         queue.push(str_link);
+        //     }
+        // }
+
+        // will go through all links on the webpage then complete 
+        // after initial webpage is done, move onto the queue
+
+    }
+
+    println!("Queue empty");
 
     // BEGIN SCRAPING LOOP // 
 
-    // add base url to links_to_scrape is full
-    links_to_scrape.push(start_url.to_string());
+    // // add base url to links_to_scrape is full
+    // links_to_scrape.push(start_url.to_string());
 
-    let max_duration = Duration::from_secs(30);
-    let mut counter = 0;
-    let start_time = Instant::now();
+    // let max_duration = Duration::from_secs(30);
+    // let mut counter = 0;
+    // let start_time = Instant::now();
 
-    // continue while we are still able to find a link in scraping queue
-    while let Some(element) = links_to_scrape.pop() {
+    // // continue while we are still able to find a link in scraping queue
+    // while let Some(element) = links_to_scrape.pop() {
         
-        while Instant::now().duration_since(start_time) < max_duration {
+    //     while Instant::now().duration_since(start_time) < max_duration {
 
-            // define website struct 
-            let mut website = Website::new(&element);
+    //         // define website struct 
+    //         let mut website = Website::new(&element);
     
-            // crawl website
-            website.scrape().await;
+    //         // crawl website
+    //         website.scrape().await;
     
-            // for each page found ... 
-            for page in website.get_pages().unwrap().iter().take(1) {
+    //         // for each page found ... 
+    //         for page in website.get_pages().unwrap().iter().take(1) {
     
-                // get page content
-                let document = Html::parse_document(&page.get_html());
-                let content = get_content(&document);
+    //             // get page content
+    //             let document = Html::parse_document(&page.get_html());
+    //             let content = get_content(&document);
     
-                // // add current data to hashmap 
-                // link_content_hash.insert(page.get_url_final().to_string(), content);
+    //             // // add current data to hashmap 
+    //             // link_content_hash.insert(page.get_url_final().to_string(), content);
     
-                // // add url to links visited
-                // links_visited.push(page.get_url_final().to_string()); //SM: GET URL FINAL IS JUST RETURNING THE STARTING URL -- FIX THIS 
+    //             // // add url to links visited
+    //             // links_visited.push(page.get_url_final().to_string()); //SM: GET URL FINAL IS JUST RETURNING THE STARTING URL -- FIX THIS 
     
-                // search for new urls on current page 
-                let mut website = Website::new(&page.get_url_final().to_string());
-                website.crawl_smart().await;
+    //             // search for new urls on current page 
+    //             let mut website = Website::new(&page.get_url_final().to_string());
+    //             website.crawl_smart().await;
     
-                // append unvisited and unqueued links to queue
-                for new_link in website.get_links() {
-                    let str_link = new_link.as_ref().to_string();
-                    if !links_to_scrape.contains(&str_link) && !links_visited.contains(&str_link) {
-                        links_to_scrape.push(new_link.as_ref().to_string());
-                    }
-                }
+    //             // append unvisited and unqueued links to queue
+    //             for new_link in website.get_links() {
+    //                 let str_link = new_link.as_ref().to_string();
+    //                 if !links_to_scrape.contains(&str_link) && !links_visited.contains(&str_link) {
+    //                     links_to_scrape.push(new_link.as_ref().to_string());
+    //                 }
+    //             }
     
-            }
+    //         }
     
-        }
-    }
+    //     }
+    // }
 
-    println!("Timer Up:");
+    // println!("Timer Up:");
 
-    for link in &links_visited {
-        println!("{}", link);
-    }
+    // for link in &links_visited {
+    //     println!("{}", link);
+    // }
 
 
     // println!("Vector is empty!")
