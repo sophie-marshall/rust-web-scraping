@@ -1,82 +1,53 @@
 // import relevant structs 
 use spider::tokio;
 use spider::website::Website;
+use scraper::{Html, html};
 mod functions;
 use functions::get_content;
-use scraper::Html;
 use std::collections::HashMap;
 use polars::prelude::*;
+use polars::prelude::{
+    CsvReader, CsvWriter, DataFrame,DataType, Field, JoinType, Schema,
+    SerReader, SerWriter,
+};
+use std::fs::File;
+// use std::path::Path;
+// use std::sync::Arc;
 
 
 #[tokio::main]
 async fn main() {
 
-    let mut queue: Vec<String> = Vec::new();
-    let mut visited: Vec<String> = Vec::new();
+    // define hashmap
+    let mut hashmap: HashMap<String, String> = HashMap::new(); // SM: Revisit, is this the right struct?
 
-    let mut website_hash: HashMap<String, String> = HashMap::new();
+    let url = "https://help.pbs.org/support/home";
 
-    // add base url to queue to start
-    queue.push("https://help.pbs.org".to_string());
+    let mut website = Website::new(&url);
 
-    // provided there are still links to be scraped
-    while let Some(url) = queue.pop() {
+    // website
+    //     .with_respect_robots_txt(true)
+    //     .with_delay();
 
-        println!("Current Queue Length: {}", queue.len());
+    website.scrape().await;
 
-        // // check on hash
-        // for (key, value) in &website_hash {
-        //     println!("Key: {}, Value: {}", key, value);
-        // };
+    // add links to scraping queue
+    for page in website.get_pages().unwrap().iter() {
 
-        // add popped url to visited
-        visited.push(url.clone());
+        // save link
+        let link = page.get_url_final().to_string();
 
-        // crawl current url 
-        let mut website: Website = Website::new(&url);
-        website.scrape().await;
+        // get paragraph content
+        let html_content = page.get_html();
+        let page_content = get_content(&Html::parse_document(&html_content));
 
-        // for each page found on the current website ... 
-        for page in website.get_pages().unwrap().iter() {
-
-            let link = page.get_url_final().to_string();
-
-            // check if the page has been visited before 
-            if !queue.contains(&link) && !visited.contains(&link) {
-
-                // if it hasnt been visited and isnt in the queue...
-                // add it to visited and get the content
-                visited.push(page.get_url_final().to_string());
-                let html_content = page.get_html();
-                let document = Html::parse_document(&html_content);
-                let page_content = get_content(&document);
-
-                // insert information into hashmap
-                website_hash.insert(link.clone(), page_content);
-
-                // check for new links and add if not already in list
-                let mut new_webstie: Website = Website::new(&link);
-                new_webstie.crawl_smart().await;
-
-                for link in new_webstie.get_links() {
-                    let str_link = link.as_ref().to_string();
-                    if !queue.contains(&str_link) && !visited.contains(&str_link) {
-                        // println!("{}", &str_link);
-                        queue.push(str_link);
-                    }
-                }
-                
-
-            }
-
-        }
+        // add to hash map 
+        // hashmap.insert(link, page_content);
 
     }
 
-    println!("Queue Empty!");
-
     // convert hashmap into table 
-    let (keys, values): (Vec<String>, Vec<String>) = website_hash.into_iter().unzip();
+    let (keys, values): (Vec<String>, Vec<String>) = hashmap.into_iter().unzip();
 
     // Create Series from Vecs
     let keys_series = Series::new("key", keys);
@@ -88,4 +59,15 @@ async fn main() {
     // Display the Polars DataFrame
     println!("{:?}", df);
 
+    let filepath = "/Users/srmarshall/Desktop/test.csv";
+
+    let mut file = File::create(filepath).expect("could not create file");
+    CsvWriter::new(&mut file)
+        .has_headers(true)
+        .with_delimiter(b',')
+        .finish(&mut df.unwrap())
+        .expect("failed to write output");
+
+
+    
 }

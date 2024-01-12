@@ -17,6 +17,7 @@ pub fn get_content(html: &Html) -> String {
     // append matches to content 
     for element in document.select(&p_selector) {
         let text = element.text().collect::<String>();
+        println!("Text: {}", text);
         let clean_text = regex.replace_all(&text, " ");
 
         content.push_str(&clean_text)
