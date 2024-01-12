@@ -1,51 +1,91 @@
 // import relevant structs 
-use spider::tokio; // use for asynchronous tasks 
-use  spider::website::{Website, self};
-// use scraper::Html;
+use spider::tokio;
+use spider::website::Website;
 mod functions;
-// use functions::{get_content};
-// use std::collections::HashMap;
-// use std::hash::Hash;
-// use std::thread::current;
-// use std::time::{Instant, Duration};
-// use regex::Regex;
-// use polars::prelude::*;
-// use polars::df;
-// use reqwest;
+use functions::get_content;
+use scraper::Html;
+use std::collections::HashMap;
+use polars::prelude::*;
 
-// enable asynchronous runtimes 
+
 #[tokio::main]
-// define async main function
 async fn main() {
 
-    // INSTANTIATE REQUIRED STRUCTS // 
     let mut queue: Vec<String> = Vec::new();
-    // let mut visited: Vec<String> = Vec::new();
-    // let mut content_hash: HashMap<String, String> = HashMap::new();
+    let mut visited: Vec<String> = Vec::new();
 
-    let root_url = "https://help.pbs.org/";
-    
-    queue.push(root_url.to_string());
-    queue.push("https://help.pbs.org/support/solutions/articles/12000059662-how-to-use-the-pbs-app-for-samsung-smart-tv-".to_string());
-    // queue.push("url3".to_string());
-    // queue.push("url4".to_string());
+    let mut website_hash: HashMap<String, String> = HashMap::new();
 
-    // BEGIN SCRAPING LOOP // 
-    while let Some(element) = queue.pop() {
+    // add base url to queue to start
+    queue.push("https://help.pbs.org".to_string());
 
-        println!("Current URL: {}", &element);
+    // provided there are still links to be scraped
+    while let Some(url) = queue.pop() {
 
-        // let mut website = Website::new(&element);
-        // website.crawl().await;
+        println!("Current Queue Length: {}", queue.len());
 
-        // for link in website.get_links() {
-        //     queue.push(link.as_ref().to_string());
-        // }
+        // // check on hash
+        // for (key, value) in &website_hash {
+        //     println!("Key: {}, Value: {}", key, value);
+        // };
 
-        println!("New Queue Length: {}", queue.len());
+        // add popped url to visited
+        visited.push(url.clone());
+
+        // crawl current url 
+        let mut website: Website = Website::new(&url);
+        website.scrape().await;
+
+        // for each page found on the current website ... 
+        for page in website.get_pages().unwrap().iter() {
+
+            let link = page.get_url_final().to_string();
+
+            // check if the page has been visited before 
+            if !queue.contains(&link) && !visited.contains(&link) {
+
+                // if it hasnt been visited and isnt in the queue...
+                // add it to visited and get the content
+                visited.push(page.get_url_final().to_string());
+                let html_content = page.get_html();
+                let document = Html::parse_document(&html_content);
+                let page_content = get_content(&document);
+
+                // insert information into hashmap
+                website_hash.insert(link.clone(), page_content);
+
+                // check for new links and add if not already in list
+                let mut new_webstie: Website = Website::new(&link);
+                new_webstie.crawl_smart().await;
+
+                for link in new_webstie.get_links() {
+                    let str_link = link.as_ref().to_string();
+                    if !queue.contains(&str_link) && !visited.contains(&str_link) {
+                        // println!("{}", &str_link);
+                        queue.push(str_link);
+                    }
+                }
+                
+
+            }
+
+        }
 
     }
 
-    println!("Vector is empty!")
+    println!("Queue Empty!");
+
+    // convert hashmap into table 
+    let (keys, values): (Vec<String>, Vec<String>) = website_hash.into_iter().unzip();
+
+    // Create Series from Vecs
+    let keys_series = Series::new("key", keys);
+    let values_series = Series::new("value", values);
+
+    // Build the DataFrame
+    let df = DataFrame::new(vec![keys_series, values_series]);
+
+    // Display the Polars DataFrame
+    println!("{:?}", df);
 
 }
