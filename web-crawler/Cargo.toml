@@ -6,3 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+spider = { version = "1.45.6", features = ["control"] }
+scraper = "0.16"
+serde = "1.0"
+regex = "1.6"
