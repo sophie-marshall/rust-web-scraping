@@ -7,15 +7,15 @@ mod crawler_config;
 use crawler_config::configure_crawler;
 
 mod functions;
-use functions::{extract_webpage_data, write_csv};
+use functions::{extract_webpage_data, write_csv, upload_to_s3};
 
 #[tokio::main]
 async fn main() {
 
     // define URL constant
-    const URL: &str = "https://help.pbs.org/";
+    let base_url = "https://help.pbs.org/";
 
-    let mut website = configure_crawler(URL);
+    let mut website = configure_crawler(base_url);
 
     website.scrape().await; // SM: add some type of error handling here
 
@@ -34,12 +34,13 @@ async fn main() {
         eprintln!("Failed to retrieve website content")
     }
 
-    // export to csv 
-    let filepath = "/Users/Sophie/Desktop/test_export.csv";
+    // set vars for s3
+    let bucket_name = "scraper-webpage-data";
 
-    if let Err(err) = write_csv(&crawled_data, filepath) {
-        eprintln!("Error exporting CSV: {}", err);
-    }
+    // // export to csv 
+    // if let Err(err) = write_csv(&crawled_data, base_url) {
+    //     eprintln!("Error exporting CSV: {}", err);
+    // }
 
 
 }

@@ -2,9 +2,14 @@ use spider::page::Page;
 use scraper::{Html, Selector};
 use regex::Regex;
 use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
 use csv::Writer;
+use url::Url;
+use chrono::{Local, Datelike};
+use rusoto_core::{Region, RusotoError};
+use rusoto_s3::{PutObjectRequest, S3, S3Client};
+use serde_json::to_string;
+use rusoto_credential::StaticProvider;
+use crate::tokio::runtime;
 
 // must start with crate self or super bc its a visibility modifier
 use crate::models::WebpageData;
@@ -47,8 +52,54 @@ pub fn extract_webpage_data(page: &Page) -> WebpageData {
     }
 }
 
+// function to write to S3 
+pub fn upload_to_s3(
+    data: &[WebpageData],
+    bucket: &str,
+    key: &str,
+    aws_access_key_id: &str, 
+    aws_secret_access_key: &str,
+) -> Result<(), RusotoError<rusoto_s3::PutObjectError>> {
+    // convert to json 
+    let json_data = to_string(data)?;
+    // provide credentials 
+    let credentials = StaticProvider::new_minimal(aws_access_key_id.to_string(), aws_secret_access_key.to_string());
+    // initialize s3 client
+    let s3 = S3Client::new_with(
+        rusoto_core::HttpClient::new().unwrap(),
+        credentials,
+        Region::default(),
+    );
+
+    // prepare put request 
+    let request = PutObjectRequest {
+        bucket: bucket.to_owned(),
+        key: key.to_owned(),
+        body: Some(json_data.into_bytes().into()),
+        ..Default::default()
+    };
+
+    // upload async
+    let runtime = runtime::Runtime::new().unwrap();
+    runtime.block_on(async {
+        s3.put_object(request).await?;
+        Ok(())
+    })
+}
+
 // function to export to a local csv
-pub fn write_csv(data: &[WebpageData], filepath: &str) -> Result<(), Box<dyn Error>> {
+pub fn write_csv(data: &[WebpageData], base_url: &str) -> Result<(), Box<dyn Error>> {
+
+    // conver url 
+    let url = Url::parse(base_url)?;
+
+    // extract base url segmeent and set date for filename 
+    let path_segment = url.host_str().unwrap_or_default();
+    let date = Local::now().format("%m%d%y").to_string();  
+    // set filename using vars above
+    let filename = format!("{}__{}__crawl_data", path_segment, date);
+    // set full filepath
+    let filepath = format!("/Users/Sophie/Desktop/{}", filename);
 
     let mut csv_writer = Writer::from_path(filepath)?;
 
@@ -63,6 +114,6 @@ pub fn write_csv(data: &[WebpageData], filepath: &str) -> Result<(), Box<dyn Err
     }
 
     csv_writer.flush()?;
-    
+
     Ok(())
 }
