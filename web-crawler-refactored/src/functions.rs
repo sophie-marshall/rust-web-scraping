@@ -1,9 +1,13 @@
-use spider::website::Page;
+use spider::page::Page;
 use scraper::{Html, Selector};
 use regex::Regex;
+use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
+use csv::Writer;
 
-mod models;
-pub use models::WebpageData;
+// must start with crate self or super bc its a visibility modifier
+use crate::models::WebpageData;
 
 fn parse_html(html_content: &str) -> String {
     // logic for parsing HTML content
@@ -33,12 +37,32 @@ pub fn extract_webpage_data(page: &Page) -> WebpageData {
     // get link and html_content directly from page
     let link = page.get_url_final().to_string();
     let html_content = page.get_html();
-    let parsed_content = parse_html(html_content);
+    let parsed_content = parse_html(&html_content);
 
     // return a struct of processed data 
     WebpageData {
         link: link,
-        html_content: html_content, 
+        html_content: html_content.to_string(), 
         parsed_content: parsed_content,
     }
+}
+
+// function to export to a local csv
+pub fn write_csv(data: &[WebpageData], filepath: &str) -> Result<(), Box<dyn Error>> {
+
+    let mut csv_writer = Writer::from_path(filepath)?;
+
+    csv_writer.write_record(vec!["link", "html_content", "parsed_content"])?;
+
+    for entry in data {
+        csv_writer.write_record(vec![
+            entry.link.to_string(),
+            entry.html_content.to_string(),
+            entry.parsed_content.to_string(),
+        ])?;
+    }
+
+    csv_writer.flush()?;
+    
+    Ok(())
 }

@@ -1,5 +1,3 @@
-extern crate spider;
-
 use spider::tokio;
 
 mod models;
@@ -9,7 +7,7 @@ mod crawler_config;
 use crawler_config::configure_crawler;
 
 mod functions;
-use functions::extract_webpage_data;
+use functions::{extract_webpage_data, write_csv};
 
 #[tokio::main]
 async fn main() {
@@ -17,7 +15,7 @@ async fn main() {
     // define URL constant
     const URL: &str = "https://help.pbs.org/";
 
-    let website = configure_crawler(URL);
+    let mut website = configure_crawler(URL);
 
     website.scrape().await; // SM: add some type of error handling here
 
@@ -26,12 +24,22 @@ async fn main() {
 
     // iterate over pages, grab content, and store it
     if let Some(pages) = website.get_pages() {
+
         for page in pages.iter() {
             let data = extract_webpage_data(page);
-            crawled_data.push(data)
+            crawled_data.push(data);
+
         }
     } else {
         eprintln!("Failed to retrieve website content")
     }
+
+    // export to csv 
+    let filepath = "/Users/Sophie/Desktop/test_export.csv";
+
+    if let Err(err) = write_csv(&crawled_data, filepath) {
+        eprintln!("Error exporting CSV: {}", err);
+    }
+
 
 }
