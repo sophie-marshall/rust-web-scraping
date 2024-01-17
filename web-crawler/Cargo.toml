@@ -1,12 +1,15 @@
 [package]
-name = "web-crawler"
+name = "digi-inno-rust-scraper"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-spider = { version = "1.45.6", features = ["control"] }
+reqwest = {version = "0.11.18", features = ["blocking"]}
 scraper = "0.16"
-serde = "1.0"
 regex = "1.6"
+spider = { version = "1.80.65", features = ["smart"]}
+polars = "0.15.1"
+serde = "1.0"
+csv = "1.1"
