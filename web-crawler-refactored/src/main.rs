@@ -7,13 +7,14 @@ mod crawler_config;
 use crawler_config::configure_crawler;
 
 mod functions;
-use functions::{extract_webpage_data, write_csv, write_to_s3};
+use functions::{extract_webpage_data, write_csv};
 
 #[tokio::main]
 async fn main() {
 
     // define URL constant
-    let base_url = "https://books.toscrape.com/";
+    // let base_url = "https://books.toscrape.com/";
+    let base_url = "https://help.pbs.org/";
 
     let mut website = configure_crawler(base_url);
 
@@ -34,13 +35,12 @@ async fn main() {
         eprintln!("Failed to retrieve website content")
     }
 
-    // export to csv 
+    // write to csv
     if let Err(err) = write_csv(&crawled_data, base_url) {
-        eprintln!("Error exporting CSV: {}", err);
+        eprintln!("Error writing CSV: {}", err)
+    } else {
+        println!("CSV written successfully!")
     }
-
-    // export to s3
-    write_to_s3(crawled_data).await?;
 
 
 }

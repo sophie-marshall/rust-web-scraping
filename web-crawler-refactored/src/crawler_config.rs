@@ -25,3 +25,4 @@ pub fn configure_crawler(url: &str) -> Website {
     website
 
 }
+
