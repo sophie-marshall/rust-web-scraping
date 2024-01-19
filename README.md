@@ -1,2 +1,12 @@
-# rag-db-rust
-RAG Implementation Using Rust
+# rust-web-scraping
+
+## `web-crawler`
+V0 of a web crawler built using Rust
+
+## `web-crawler-refactored`
+V1 of web crawler
+- Hopefully better organized
+- Leadning heavier on `spider` crate
+
+## `web-crawler-api`
+Test API built using `actix`
