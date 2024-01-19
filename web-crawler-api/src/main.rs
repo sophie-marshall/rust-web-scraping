@@ -22,7 +22,6 @@ async fn main() -> std::io::Result<()> {
     let url_db = repository::database::Database::new();
     let app_data = web::Data::new(url_db);
 
-    
     // create a new server using HttpServer struct
     HttpServer::new(move || {
         // define cors policy
@@ -37,9 +36,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_data.clone())
             .configure(api::api::config)
-            .service(api::api::healthcheck)
-            .service(api::api::uppercase) // add new uppercase endpoint
-            .service(api::crawl::crawl_url) // add base crawl endpoint
+            .service(api::health::healthcheck)
+            .service(api::spider::crawl_url) // add base crawl endpoint
             .default_service(web::route().to(not_found)) // app is used to register routes the server should handle, set default handler as not_found used if resource is not registered with teh server
             .wrap(actix_web::middleware::Logger::default())
             .wrap(cors)

@@ -1,50 +1,6 @@
-use actix_web::{web, get, Responder};
+use actix_web::web;
 use actix_web::{web::{Data,Json,}, post, HttpResponse};
-use crate::{models::url::Url, 
-    models::response::Response, 
-    models::input::Input, 
-    repository::database::Database};
-
-// HEALTHCHECK ENDPOINT //
-#[get("/health")]
-pub async fn healthcheck () -> impl Responder {
-    let response = Response {
-        message: "Health check passed".to_string(),
-    };
-    HttpResponse::Ok().json(response)
-}
-
-// UPPERCASE ENDPOINT //
-#[post("/uppercase")]
-pub async fn uppercase(input: web::Json<Input>) -> impl Responder {
-    let uppercase_data = input.message.to_uppercase();
-    let response = Response {
-        message: uppercase_data,
-    };
-
-    // Serialize Response to JSON string
-    match serde_json::to_string(&response) {
-        Ok(json_response) => HttpResponse::Ok()
-            .content_type("application/json")
-            .body(json_response),
-        Err(e) => {
-            eprintln!("Failed to serialize response to JSON: {}", e);
-            HttpResponse::InternalServerError().finish()
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
+use crate::{models::url::Url, repository::database::Database};
 
 // create a create_url function taking DB and Url as input
 #[post("/urls")]
