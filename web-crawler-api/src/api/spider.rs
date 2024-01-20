@@ -28,12 +28,6 @@ pub async fn crawl_url(input: web::Json<Input>) -> impl Responder {
     }
     // prepare response 
     let response = CrawledDataResponse{ crawled_data };
-    let json_response = serde_json::to_string(&response);
-    // send HTTP response 
-    match json_response {
-        // if okay, send the json back to requester
-        Ok(json) => HttpResponse::Ok().json(json),
-        // else send server error
-        Err(_) => HttpResponse::InternalServerError().finish()
-    }
+
+    HttpResponse::Ok().json(response)
 }
